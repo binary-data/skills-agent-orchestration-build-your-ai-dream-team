@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="A clear view of Mona's current project health and activity.">
+    <title>Project Pulse</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="page-shell">
+        <p class="eyebrow">Mona's workspace</p>
+        <h1>Project Pulse</h1>
+        <p class="page-introduction">
+          See project health, ownership, and the latest activity at a glance.
+        </p>
+      </div>
+    </header>
+
+    <main class="dashboard page-shell">
+      <section class="dashboard-introduction dashboard-hero" aria-labelledby="dashboard-heading">
+        <div class="dashboard-hero-content">
+          <p class="section-kicker">Team overview</p>
+          <h2 id="dashboard-heading">Projects in motion</h2>
+        </div>
+        <p class="dashboard-description">
+          A shared snapshot for contributors planning their next move.
+        </p>
+      </section>
+
+      <section class="project-section projects-section" aria-labelledby="projects-heading">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Current portfolio</p>
+            <h2 id="projects-heading">Project updates</h2>
+          </div>
+          <p id="dashboard-status" class="status-message" aria-live="polite">
+            Loading project updates…
+          </p>
+        </div>
+
+        <div id="loading-state" class="dashboard-state loading-state" role="status">
+          <p>Loading project updates…</p>
+        </div>
+
+        <div id="empty-state" class="dashboard-state empty-state" role="status" hidden>
+          <h3>No projects to show</h3>
+          <p>Project data is available, but no projects have been added yet.</p>
+        </div>
+
+        <div id="error-state" class="dashboard-state error-state" role="alert" hidden>
+          <h3>Project updates unavailable</h3>
+          <p id="error-message">
+            We could not load the project updates. Please try again later.
+          </p>
+        </div>
+
+        <ul id="project-list" class="project-grid" aria-label="Project updates" hidden></ul>
+      </section>
+    </main>
+
+    <script>
+      (function () {
+        "use strict";
+
+        const dataUrl = "project-data.json";
+        const requiredFields = [
+          "name",
+          "owner",
+          "status",
+          "recentActivity",
+          "priority"
+        ];
+        const loadingState = document.querySelector("#loading-state");
+        const emptyState = document.querySelector("#empty-state");
+        const errorState = document.querySelector("#error-state");
+        const errorMessage = document.querySelector("#error-message");
+        const projectList = document.querySelector("#project-list");
+        const dashboardStatus = document.querySelector("#dashboard-status");
+
+        function setState(state, message) {
+          loadingState.hidden = state !== "loading";
+          emptyState.hidden = state !== "empty";
+          errorState.hidden = state !== "error";
+          projectList.hidden = state !== "ready";
+          projectList.setAttribute("aria-busy", state === "loading" ? "true" : "false");
+
+          if (message) {
+            dashboardStatus.textContent = message;
+          }
+        }
+
+        function validateProjects(payload) {
+          if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+            throw new Error("The project data must be a JSON object.");
+          }
+
+          if (!Array.isArray(payload.projects)) {
+            throw new Error("The project data must include a projects array.");
+          }
+
+          return payload.projects.map(function (project, index) {
+            if (!project || typeof project !== "object" || Array.isArray(project)) {
+              throw new Error("Project " + (index + 1) + " is not a valid object.");
+            }
+
+            requiredFields.forEach(function (field) {
+              if (typeof project[field] !== "string" || project[field].trim() === "") {
+                throw new Error(
+                  "Project " + (index + 1) + " is missing a valid " + field + "."
+                );
+              }
+            });
+
+            if (
+              Object.prototype.hasOwnProperty.call(project, "summary") &&
+              typeof project.summary !== "string"
+            ) {
+              throw new Error("Project " + (index + 1) + " has an invalid summary.");
+            }
+
+            return project;
+          });
+        }
+
+        function classNameFor(value) {
+          return value
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "")
+            .slice(0, 40);
+        }
+
+        function createDetail(label, value, valueClass) {
+          const detail = document.createElement("div");
+          detail.className = "project-detail metadata-row";
+
+          const term = document.createElement("dt");
+          term.textContent = label;
+
+          const description = document.createElement("dd");
+          description.className = "project-detail-value " + (valueClass || "");
+          description.textContent = value;
+
+          detail.append(term, description);
+          return detail;
+        }
+
+        function createProjectCard(project) {
+          const card = document.createElement("li");
+          card.className = "project-card";
+
+          const heading = document.createElement("h3");
+          heading.className = "project-card-title";
+          heading.textContent = project.name;
+          card.append(heading);
+
+          if (project.summary && project.summary.trim()) {
+            const summary = document.createElement("p");
+            summary.className = "project-summary project-card-summary";
+            summary.textContent = project.summary;
+            card.append(summary);
+          }
+
+          const details = document.createElement("dl");
+          details.className = "project-details project-card-meta";
+          details.append(
+            createDetail("Owner", project.owner, "project-owner"),
+            createDetail(
+              "Status",
+              project.status,
+              "status-badge status-" + classNameFor(project.status)
+            ),
+            createDetail("Recent activity", project.recentActivity, "recent-activity"),
+            createDetail(
+              "Priority",
+              project.priority,
+              "priority-badge priority-" + classNameFor(project.priority)
+            )
+          );
+          card.append(details);
+
+          return card;
+        }
+
+        function renderProjects(projects) {
+          projectList.replaceChildren();
+          projects.forEach(function (project) {
+            projectList.append(createProjectCard(project));
+          });
+        }
+
+        function showError(message) {
+          errorMessage.textContent = message;
+          setState("error", "Project updates could not be loaded.");
+        }
+
+        fetch(dataUrl, { headers: { Accept: "application/json" } })
+          .then(function (response) {
+            if (!response.ok) {
+              throw new Error("The project data request returned an error.");
+            }
+            return response.json();
+          })
+          .then(validateProjects)
+          .then(function (projects) {
+            if (projects.length === 0) {
+              setState("empty", "No projects are currently available.");
+              return;
+            }
+
+            renderProjects(projects);
+            setState("ready", projects.length + " project updates loaded.");
+          })
+          .catch(function (error) {
+            showError(error.message || "Please try again later.");
+          });
+      }());
+    </script>
+  </body>
+</html>

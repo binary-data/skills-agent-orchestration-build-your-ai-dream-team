@@ -1,0 +1,36 @@
+{
+  "projects": [
+    {
+      "name": "Atlas onboarding",
+      "owner": "Priya Shah",
+      "status": "On track",
+      "recentActivity": "Welcome flow review completed yesterday",
+      "priority": "High",
+      "summary": "Simplify the first-week experience for new contributors."
+    },
+    {
+      "name": "Northstar analytics",
+      "owner": "Mona Chen",
+      "status": "At risk",
+      "recentActivity": "Data quality workshop scheduled for Friday",
+      "priority": "High",
+      "summary": "Create a dependable view of activation and retention signals."
+    },
+    {
+      "name": "Canvas refresh",
+      "owner": "Jordan Lee",
+      "status": "In progress",
+      "recentActivity": "New dashboard components are ready for feedback",
+      "priority": "Medium",
+      "summary": "Give the shared workspace a clearer, more focused visual system."
+    },
+    {
+      "name": "Greenhouse integrations",
+      "owner": "Alex Rivera",
+      "status": "Planned",
+      "recentActivity": "Partner requirements gathered this week",
+      "priority": "Low",
+      "summary": "Connect the project workflow to the tools teams already use."
+    }
+  ]
+}
